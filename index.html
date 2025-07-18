@@ -2,48 +2,89 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Ingreso a Obra</title>
+  <title>Registro de Ingreso</title>
   <style>
-    body { font-family: Arial; padding: 2rem; background-color: #f8f8f8; }
-    label, input, button { display: block; margin-bottom: 1rem; width: 100%; }
+    body { font-family: sans-serif; padding: 2rem; background: #f2f2f2; }
+    label, select, input, button { display: block; margin-bottom: 1rem; }
+    #estado[aria-live] { min-height: 1.5em; }
+    button[disabled] { opacity: 0.7; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <h2>Registro de Ingreso</h2>
-  <form id="formulario">
+  <h2>Registro de Ingreso a Obra</h2>
+  <form id="registroForm" autocomplete="off">
     <label for="nombre">Nombre:</label>
-    <input type="text" id="nombre" required>
-    <input type="hidden" id="obra">
-    <button type="submit">Registrar</button>
-    <p id="respuesta"></p>
+    <input type="text" id="nombre" name="nombre" required maxlength="100" pattern="^[A-Za-zÁÉÍÓÚáéíóúÑñ\s.'-]{2,100}$" autocomplete="off">
+
+    <input type="hidden" id="obra" name="obra" value=""> <!-- Lo llenamos con URL -->
+    
+    <button type="submit" id="submitBtn">Registrar</button>
   </form>
+  <p id="estado" aria-live="polite"></p>
 
   <script>
+    // Captura el ID de la obra desde la URL (ej: ?obra=NombreObra1)
     const params = new URLSearchParams(window.location.search);
-    document.getElementById("obra").value = params.get("obra") || "ObraDesconocida";
+    const obraValue = params.get("obra") || "Desconocida";
+    document.getElementById("obra").value = obraValue;
 
-    document.getElementById("formulario").addEventListener("submit", async (e) => {
+    // Notifica si no hay obra en la URL
+    if (obraValue === "Desconocida") {
+      document.getElementById("estado").textContent = "⚠️ Obra no especificada en la URL.";
+    }
+
+    const form = document.getElementById("registroForm");
+    const estado = document.getElementById("estado");
+    const submitBtn = document.getElementById("submitBtn");
+    const nombreInput = document.getElementById("nombre");
+
+    // Saneamiento básico al perder foco
+    nombreInput.addEventListener("blur", () => {
+      nombreInput.value = nombreInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s.'-]/g, "").trim();
+    });
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const nombre = document.getElementById("nombre").value.trim();
-      const obra = document.getElementById("obra").value.trim();
+      estado.textContent = ""; // limpia estado previo
+
+      // Validación extra JS (defensiva)
+      const nombre = nombreInput.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñ\s.'-]/g, "").trim();
+      if (!nombre || nombre.length < 2) {
+        estado.textContent = "❌ Ingresa un nombre válido.";
+        nombreInput.focus();
+        return;
+      }
+
+      submitBtn.disabled = true;
+
+      const obra = document.getElementById("obra").value;
       const userAgent = navigator.userAgent;
 
       const data = { nombre, obra, userAgent };
 
-      const respuesta = await fetch("https://script.google.com/macros/s/AKfycbz7KYhRCOqriu3-MGVsDL9t6kYLUi5PV1Kj2zT329Jmr9vOXocm2C2JyfWcNvQHF5EqTQ/exec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+      try {
+        const response = await fetch("https://script.google.com/macros/s/AKfycbxNbycvw9ZQGj9o69_jaxhQq6ML3bRXzXN8Gw0uaEY1HXWKGl_U3tJzKFqVF6BCcJYbUg/exec", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
 
-      if (respuesta.ok) {
-        document.getElementById("respuesta").textContent = "✅ Registro exitoso";
-        document.getElementById("formulario").reset();
-      } else {
-        document.getElementById("respuesta").textContent = "❌ Error al registrar";
+        const text = await response.text();
+
+        if (text === "OK") {
+          estado.textContent = "✅ Registro exitoso";
+          form.reset();
+        } else if (text === "YA_REGISTRADO") {
+          estado.textContent = "⚠️ Ya te registraste hoy para esta obra.";
+        } else {
+          estado.textContent = "❌ Error al registrar";
+        }
+      } catch (error) {
+        estado.textContent = "❌ Error de red o servidor. Intenta de nuevo.";
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   </script>
 </body>
 </html>
-
