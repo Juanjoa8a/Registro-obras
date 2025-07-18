@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Ingreso</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f2f2f2; }
+    label, select, input, button { display: block; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>Registro de Ingreso a Obra</h2>
+  <form id="registroForm">
+    <label for="nombre">Nombre:</label>
+    <input type="text" id="nombre" required>
+
+    <input type="hidden" id="obra" value=""> <!-- Lo llenamos con URL -->
+    
+    <button type="submit">Registrar</button>
+  </form>
+  <p id="estado"></p>
+
+  <script>
+    // Captura el ID de la obra desde la URL (ej: ?obra=NombreObra1)
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("obra").value = params.get("obra") || "Desconocida";
+
+    const form = document.getElementById("registroForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById("nombre").value;
+      const obra = document.getElementById("obra").value;
+      const userAgent = navigator.userAgent;
+
+      const data = { nombre, obra, userAgent };
+
+      const response = await fetch("https://script.google.com/macros/s/AKfycbwh15efHp_VgkBYk6o7eZzSYpABZmCX9ba8WYRuCFR_h_OYzaNtucepyI0Y5TbjTD1w/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        document.getElementById("estado").textContent = "✅ Registro exitoso";
+        form.reset();
+      } else {
+        document.getElementById("estado").textContent = "❌ Error al registrar";
+      }
+    });
+  </script>
+</body>
+</html>
